@@ -10,40 +10,60 @@ import (
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "Find and replace string in file(s) or stdin"
-	app.Usage = "Simple tool for find and replace"
-
-	myFlags := []cli.Flag{
-		&cli.StringFlag{
-			Name:  "str",
-			Value: "The quick brown fox jumps over the lazy dog",
-		},
+	app.Name = "findreplace"
+	app.Usage = "Find and replace string in file(s) or stdin"
+	app.Description = "Description"
+	app.Authors = []*cli.Author{
+		{Name: "Andrew Gly", Email: "glybin.av@gmail.com"},
 	}
 
 	app.Commands = []*cli.Command{
-		{
-			Name:  "find",
-			Usage: "find str in stream",
-			Flags: myFlags,
-			Action: func(c *cli.Context) error {
-				fmt.Println(c.String("str"))
-				return nil
-			},
-		},
-		{
-			Name:  "replace",
-			Usage: "find str in stream",
-			Flags: myFlags,
-			Action: func(c *cli.Context) error {
-				fmt.Println(c.String("str"))
-				return nil
-			},
-		},
+		findCommand(),
+		replaceCommand(),
 	}
+
+	app.Action = mainAction
 
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+}
+
+func findCommand() *cli.Command {
+	return &cli.Command{
+		Name:    "find",
+		Aliases: []string{"f"},
+		Usage:   "find str in stream",
+		Action: func(c *cli.Context) error {
+			n := c.NArg()
+			if n == 0 {
+				return fmt.Errorf("No arguments for find command")
+			}
+
+			return nil
+		},
+	}
+}
+
+func replaceCommand() *cli.Command {
+	return &cli.Command{
+		Name:    "replace",
+		Aliases: []string{"r"},
+		Usage:   "replace str in stream",
+		Action: func(c *cli.Context) error {
+			n := c.NArg()
+			if n == 0 {
+				return fmt.Errorf("No arguments for replace command")
+			}
+
+			return nil
+		},
+	}
+}
+
+func mainAction(arg *cli.Context) error {
+	arg.App.Command("help").Run(arg)
+	return nil
 }
