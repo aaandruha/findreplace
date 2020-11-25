@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/urfave/cli"
 )
@@ -41,7 +44,23 @@ func findCommand() *cli.Command {
 			if n == 0 {
 				return fmt.Errorf("No arguments for find command")
 			}
+			if n == 1 {
+				return fmt.Errorf("No find string in arguments")
+			}
 
+			file := os.Args[3]
+			if len(file) == 0 {
+				findLines(os.Stdin, os.Args[2])
+			} else {
+				//	for _, arg := range file {
+				f, err := os.Open(file)
+				if err != nil {
+					log.Fatal(err)
+				}
+				findLines(f, os.Args[2])
+				f.Close()
+				//	}
+			}
 			return nil
 		},
 	}
@@ -66,4 +85,18 @@ func replaceCommand() *cli.Command {
 func mainAction(arg *cli.Context) error {
 	arg.App.Command("help").Run(arg)
 	return nil
+}
+
+func findLines(f *os.File, str string) {
+	input := bufio.NewScanner(f)
+	i := 1
+	for input.Scan() {
+		//counts[input.Text()]++
+		s := input.Text()
+		if strings.Index(s, str) >= 0 {
+			fmt.Printf("%s:%d - %s\n", filepath.Base(os.Args[3]), i, input.Text())
+		}
+		i++
+	}
+
 }
