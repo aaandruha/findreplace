@@ -3,9 +3,9 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/urfave/cli"
@@ -50,15 +50,16 @@ func findCommand() *cli.Command {
 
 			file := os.Args[3]
 			if len(file) == 0 {
-				findLines(os.Stdin, os.Args[2])
+				//findLines(os.Stdin, os.Args[2])
 			} else {
 				//	for _, arg := range file {
-				f, err := os.Open(file)
+				/*f, err := os.Open(file)
 				if err != nil {
 					log.Fatal(err)
 				}
 				findLines(f, os.Args[2])
-				f.Close()
+				f.Close()*/
+				walkDir(file)
 				//	}
 			}
 			return nil
@@ -87,16 +88,34 @@ func mainAction(arg *cli.Context) error {
 	return nil
 }
 
-func findLines(f *os.File, str string) {
+func findLines(fileName, str string) {
+	f, err := os.Open(fileName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "dul: %v\n", err)
+	}
 	input := bufio.NewScanner(f)
 	i := 1
 	for input.Scan() {
 		//counts[input.Text()]++
 		s := input.Text()
 		if strings.Index(s, str) >= 0 {
-			fmt.Printf("%s:%d - %s\n", filepath.Base(os.Args[3]), i, input.Text())
+			fmt.Printf("%s:%d - %s\n", fileName, i, input.Text())
 		}
 		i++
 	}
+	f.Close()
 
+}
+
+func walkDir(dir string) {
+	// todo: добавить возможность подстановки последнего символа '/' в путь файла
+	entries, err := ioutil.ReadDir(dir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "dul: %v\n", err)
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			findLines(dir+entry.Name(), os.Args[2])
+		}
+	}
 }
