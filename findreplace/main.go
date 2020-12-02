@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/urfave/cli"
@@ -50,17 +51,9 @@ func findCommand() *cli.Command {
 
 			file := os.Args[3]
 			if len(file) == 0 {
-				//findLines(os.Stdin, os.Args[2])
+				findLinesInFile(os.Stdin, os.Args[2])
 			} else {
-				//	for _, arg := range file {
-				/*f, err := os.Open(file)
-				if err != nil {
-					log.Fatal(err)
-				}
-				findLines(f, os.Args[2])
-				f.Close()*/
 				walkDir(file)
-				//	}
 			}
 			return nil
 		},
@@ -91,7 +84,7 @@ func mainAction(arg *cli.Context) error {
 func findLines(fileName, str string) {
 	f, err := os.Open(fileName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "dul: %v\n", err)
+		fmt.Fprintf(os.Stderr, "OpenError: %v\n", err)
 	}
 	input := bufio.NewScanner(f)
 	i := 1
@@ -107,15 +100,40 @@ func findLines(fileName, str string) {
 
 }
 
-func walkDir(dir string) {
+func walkDir(path string) {
 	// todo: добавить возможность подстановки последнего символа '/' в путь файла
-	entries, err := ioutil.ReadDir(dir)
+
+	fi, err := os.Stat(path)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "dul: %v\n", err)
+		fmt.Println(err)
+		return
 	}
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			findLines(dir+entry.Name(), os.Args[2])
+	switch mode := fi.Mode(); {
+	case mode.IsDir():
+		entries, err := ioutil.ReadDir(path)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "wlkError: %v\n", err)
 		}
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				findLines(path+entry.Name(), os.Args[2])
+			}
+		}
+	case mode.IsRegular():
+		findLines(path, os.Args[2])
 	}
+
+}
+
+func findLinesInFile(f *os.File, str string) {
+	input := bufio.NewScanner(f)
+	i := 1
+	for input.Scan() {
+		s := input.Text()
+		if strings.Index(s, str) >= 0 {
+			fmt.Printf("%s:%d - %s\n", filepath.Base(os.Args[3]), i, input.Text())
+		}
+		i++
+	}
+
 }
