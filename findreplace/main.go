@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -30,7 +30,7 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(os.Stderr, "openError: %v\n", err)
 	}
 
 }
@@ -43,10 +43,10 @@ func findCommand() *cli.Command {
 		Action: func(c *cli.Context) error {
 			n := c.NArg()
 			if n == 0 {
-				return fmt.Errorf("No arguments for find command")
+				return errors.Wrap(errors.New("NArgs"), "no arguments for find command")
 			}
 			if n == 1 {
-				return fmt.Errorf("No find string in arguments")
+				return errors.Wrap(errors.New("NArgs=1"), "No find string in arguments")
 			}
 
 			file := os.Args[3]
@@ -68,7 +68,7 @@ func replaceCommand() *cli.Command {
 		Action: func(c *cli.Context) error {
 			n := c.NArg()
 			if n == 0 {
-				return fmt.Errorf("No arguments for replace command")
+				return errors.Wrap(errors.New("NArgs"), "no arguments for find command")
 			}
 
 			return nil
@@ -77,19 +77,21 @@ func replaceCommand() *cli.Command {
 }
 
 func mainAction(arg *cli.Context) error {
-	arg.App.Command("help").Run(arg)
+	_, err = arg.App.Command("help").Run(arg)
+	if err != nil {
+		return errors.Wrap(err, "no help yet")
+	}
 	return nil
 }
 
-func findLines(fileName, str string) {
+func findLines(fileName, str string) error {
 	f, err := os.Open(fileName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "OpenError: %v\n", err)
+		return errors.Wrap(err, "can't open file")
 	}
 	input := bufio.NewScanner(f)
 	i := 1
 	for input.Scan() {
-		//counts[input.Text()]++
 		s := input.Text()
 		if strings.Index(s, str) >= 0 {
 			fmt.Printf("%s:%d - %s\n", fileName, i, input.Text())
@@ -100,32 +102,37 @@ func findLines(fileName, str string) {
 
 }
 
-func walkDir(path string) {
+func walkDir(path string) error {
 	// todo: добавить возможность подстановки последнего символа '/' в путь файла
 
 	fi, err := os.Stat(path)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return errors.Wrap(err, "no file or directory")
 	}
 	switch mode := fi.Mode(); {
 	case mode.IsDir():
 		entries, err := ioutil.ReadDir(path)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "wlkError: %v\n", err)
+			return errors.Wrap(err, "can't read file or directory")
 		}
 		for _, entry := range entries {
 			if !entry.IsDir() {
-				findLines(path+entry.Name(), os.Args[2])
+				_, err = findLines(path+entry.Name(), os.Args[2])
+				if err != nil {
+					return errors.Wrap(err, "can't find lines")
+				}
 			}
 		}
 	case mode.IsRegular():
-		findLines(path, os.Args[2])
+		_, err = findLines(path, os.Args[2])
+		if err != nil {
+			return errors.Wrap(err, "can't read file or directory")
+		}
 	}
 
 }
 
-func findLinesInFile(f *os.File, str string) {
+func findLinesInFile(f *os.File, str string) error {
 	input := bufio.NewScanner(f)
 	i := 1
 	for input.Scan() {
@@ -135,5 +142,5 @@ func findLinesInFile(f *os.File, str string) {
 		}
 		i++
 	}
-
+	return nil
 }
