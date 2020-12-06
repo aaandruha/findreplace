@@ -30,7 +30,7 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "openError: %v\n", err)
+		fmt.Fprintf(os.Stderr, "runError: %v\n", err)
 	}
 
 }
@@ -46,14 +46,20 @@ func findCommand() *cli.Command {
 				return errors.Wrap(errors.New("NArgs"), "no arguments for find command")
 			}
 			if n == 1 {
-				return errors.Wrap(errors.New("NArgs=1"), "No find string in arguments")
+				return errors.Wrap(errors.New("NArgs=1"), "no find string in arguments")
 			}
 
 			file := os.Args[3]
 			if len(file) == 0 {
-				findLinesInFile(os.Stdin, os.Args[2])
+				err := findLinesInFile(os.Stdin, os.Args[2])
+				if err != nil {
+					return errors.Wrap(err, "fndCmdArgFileError:")
+				}
 			} else {
-				walkDir(file)
+				err := walkDir(file)
+				if err != nil {
+					return errors.Wrap(err, "fndCmdArgWlkError:")
+				}
 			}
 			return nil
 		},
@@ -77,9 +83,9 @@ func replaceCommand() *cli.Command {
 }
 
 func mainAction(arg *cli.Context) error {
-	_, err = arg.App.Command("help").Run(arg)
+	err := arg.App.Command("help").Run(arg)
 	if err != nil {
-		return errors.Wrap(err, "no help yet")
+		return errors.Wrap(err, "HlpError:")
 	}
 	return nil
 }
@@ -87,7 +93,7 @@ func mainAction(arg *cli.Context) error {
 func findLines(fileName, str string) error {
 	f, err := os.Open(fileName)
 	if err != nil {
-		return errors.Wrap(err, "can't open file")
+		return errors.Wrap(err, "FndLnsOpenError:")
 	}
 	input := bufio.NewScanner(f)
 	i := 1
@@ -99,6 +105,7 @@ func findLines(fileName, str string) error {
 		i++
 	}
 	f.Close()
+	return nil
 
 }
 
@@ -107,29 +114,29 @@ func walkDir(path string) error {
 
 	fi, err := os.Stat(path)
 	if err != nil {
-		return errors.Wrap(err, "no file or directory")
+		return errors.Wrap(err, "wlkPathError:")
 	}
 	switch mode := fi.Mode(); {
 	case mode.IsDir():
 		entries, err := ioutil.ReadDir(path)
 		if err != nil {
-			return errors.Wrap(err, "can't read file or directory")
+			return errors.Wrap(err, "wlkReadDirError:")
 		}
 		for _, entry := range entries {
 			if !entry.IsDir() {
-				_, err = findLines(path+entry.Name(), os.Args[2])
+				err = findLines(path+entry.Name(), os.Args[2])
 				if err != nil {
-					return errors.Wrap(err, "can't find lines")
+					return errors.Wrap(err, "wlkEntriesError:")
 				}
 			}
 		}
 	case mode.IsRegular():
-		_, err = findLines(path, os.Args[2])
+		err = findLines(path, os.Args[2])
 		if err != nil {
-			return errors.Wrap(err, "can't read file or directory")
+			return errors.Wrap(err, "wlkRegularError:")
 		}
 	}
-
+	return nil
 }
 
 func findLinesInFile(f *os.File, str string) error {
