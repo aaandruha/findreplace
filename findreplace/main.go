@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -45,17 +44,14 @@ func findCommand() *cli.Command {
 			if n == 0 {
 				return errors.New("nArgs: no arguments for find command")
 			}
-			if n == 1 {
-				return errors.New("nArgs=1: no find string in arguments")
-			}
-			file := c.Args().Get(3)
+			file := c.Args().Get(1)
 			if len(file) == 0 {
-				err := findLinesInFile(os.Stdin, c.Args().Get(2), file)
+				err := findLinesInFile(os.Stdin, c.Args().Get(0))
 				if err != nil {
 					return errors.Wrap(err, "fndCmdArgFileError:")
 				}
 			} else {
-				err := walkDir(file, c.Args().Get(2))
+				err := walkDir(file, c.Args().Get(0))
 				if err != nil {
 					return errors.Wrap(err, "fndCmdArgWlkError:")
 				}
@@ -123,7 +119,7 @@ func walkDir(path, str string) error {
 		}
 		for _, entry := range entries {
 			if !entry.IsDir() {
-				err = findLines(path+entry.Name(), str])
+				err = findLines(path+entry.Name(), str)
 				if err != nil {
 					return errors.Wrap(err, "wlkEntriesError:")
 				}
@@ -138,15 +134,16 @@ func walkDir(path, str string) error {
 	return nil
 }
 
-func findLinesInFile(f *os.File, str, filePath string) error {
+func findLinesInFile(f *os.File, str string) error {
 	input := bufio.NewScanner(f)
 	i := 1
 	for input.Scan() {
 		s := input.Text()
 		if strings.Index(s, str) >= 0 {
-			fmt.Printf("%s:%d - %s\n", filepath.Base(filePath), i, input.Text())
+			fmt.Printf("%d - %s\n", i, input.Text())
 		}
 		i++
+		return nil
 	}
 	return nil
 }
