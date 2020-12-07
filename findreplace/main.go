@@ -43,20 +43,19 @@ func findCommand() *cli.Command {
 		Action: func(c *cli.Context) error {
 			n := c.NArg()
 			if n == 0 {
-				return errors.Wrap(errors.New("NArgs"), "no arguments for find command")
+				return errors.New("nArgs: no arguments for find command")
 			}
 			if n == 1 {
-				return errors.Wrap(errors.New("NArgs=1"), "no find string in arguments")
+				return errors.New("nArgs=1: no find string in arguments")
 			}
-
-			file := os.Args[3]
+			file := c.Args().Get(3)
 			if len(file) == 0 {
-				err := findLinesInFile(os.Stdin, os.Args[2])
+				err := findLinesInFile(os.Stdin, c.Args().Get(2), file)
 				if err != nil {
 					return errors.Wrap(err, "fndCmdArgFileError:")
 				}
 			} else {
-				err := walkDir(file)
+				err := walkDir(file, c.Args().Get(2))
 				if err != nil {
 					return errors.Wrap(err, "fndCmdArgWlkError:")
 				}
@@ -74,7 +73,7 @@ func replaceCommand() *cli.Command {
 		Action: func(c *cli.Context) error {
 			n := c.NArg()
 			if n == 0 {
-				return errors.Wrap(errors.New("NArgs"), "no arguments for find command")
+				return errors.New("nArgs: no arguments for find command")
 			}
 
 			return nil
@@ -109,7 +108,7 @@ func findLines(fileName, str string) error {
 
 }
 
-func walkDir(path string) error {
+func walkDir(path, str string) error {
 	// todo: добавить возможность подстановки последнего символа '/' в путь файла
 
 	fi, err := os.Stat(path)
@@ -124,14 +123,14 @@ func walkDir(path string) error {
 		}
 		for _, entry := range entries {
 			if !entry.IsDir() {
-				err = findLines(path+entry.Name(), os.Args[2])
+				err = findLines(path+entry.Name(), str])
 				if err != nil {
 					return errors.Wrap(err, "wlkEntriesError:")
 				}
 			}
 		}
 	case mode.IsRegular():
-		err = findLines(path, os.Args[2])
+		err = findLines(path, str)
 		if err != nil {
 			return errors.Wrap(err, "wlkRegularError:")
 		}
@@ -139,13 +138,13 @@ func walkDir(path string) error {
 	return nil
 }
 
-func findLinesInFile(f *os.File, str string) error {
+func findLinesInFile(f *os.File, str, filePath string) error {
 	input := bufio.NewScanner(f)
 	i := 1
 	for input.Scan() {
 		s := input.Text()
 		if strings.Index(s, str) >= 0 {
-			fmt.Printf("%s:%d - %s\n", filepath.Base(os.Args[3]), i, input.Text())
+			fmt.Printf("%s:%d - %s\n", filepath.Base(filePath), i, input.Text())
 		}
 		i++
 	}
