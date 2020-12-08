@@ -120,6 +120,7 @@ func findLines(fileName, str string, strReplace string) ([]string, error) {
 }
 
 func rewriteLines(fileName string, str []string) error {
+
 	file, err := os.Create(fileName)
 	if err != nil {
 		return err
@@ -153,7 +154,7 @@ func walkDir(path, str, replace string) error {
 				if err != nil {
 					return errors.Wrap(err, "wlkEntriesError:")
 				}
-				if len(lines)> 0{
+				if len(lines) > 0 {
 					err = rewriteLines(path, lines)
 					if err != nil {
 						return errors.Wrap(err, "wlkRegularRewriteError:")
@@ -167,7 +168,7 @@ func walkDir(path, str, replace string) error {
 		if err != nil {
 			return errors.Wrap(err, "wlkRegularError:")
 		}
-		if len(lines) > 0  {
+		if len(lines) > 0 {
 			err = rewriteLines(path, lines)
 			if err != nil {
 				return errors.Wrap(err, "wlkRegularRewriteError:")
