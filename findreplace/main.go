@@ -137,7 +137,6 @@ func rewriteLines(fileName string, str []string) error {
 }
 
 func walkDir(path, str, replace string) error {
-	// todo: добавить возможность подстановки последнего символа '/' в путь файла
 
 	fi, err := os.Stat(path)
 	if err != nil {
