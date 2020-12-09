@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+
 	app := cli.NewApp()
 	app.Name = "findreplace"
 	app.Usage = "Find and replace string in file(s) or stdin"
@@ -155,9 +156,9 @@ func walkDir(path, str, replace string) error {
 					return errors.Wrap(err, "wlkEntriesError:")
 				}
 				if len(lines) > 0 {
-					err = rewriteLines(path, lines)
+					err = rewriteLines(path+entry.Name(), lines)
 					if err != nil {
-						return errors.Wrap(err, "wlkRegularRewriteError:")
+						return errors.Wrap(err, "wlkRewriteEnriesError:")
 					}
 				}
 
@@ -171,7 +172,7 @@ func walkDir(path, str, replace string) error {
 		if len(lines) > 0 {
 			err = rewriteLines(path, lines)
 			if err != nil {
-				return errors.Wrap(err, "wlkRegularRewriteError:")
+				return errors.Wrap(err, "wlkRegularRewriteFileError:")
 			}
 		}
 
