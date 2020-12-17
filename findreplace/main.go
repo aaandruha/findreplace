@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -30,7 +31,7 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "runError: %v\n", err)
+		fmt.Fprintf(os.Stderr, "fatal error: %v\n", err)
 	}
 
 }
@@ -42,19 +43,16 @@ func findCommand() *cli.Command {
 		Usage:   "find str in stream",
 		Action: func(c *cli.Context) error {
 			if c.NArg() == 0 {
-				return errors.New("nArgs: no arguments for find command")
+				return errors.New("no enough arguments for find command")
 			}
-			file := c.Args().Get(1)
-			str := c.Args().Get(0)
-			if len(file) == 0 {
-				_, err := findLinesInFile(os.Stdin, str, false)
-				if err != nil {
-					return errors.Wrap(err, "fndCmdArgFileError:")
-				}
+			path := c.Args().Get(1)
+			search := c.Args().Get(0)
+			if len(path) == 0 {
+				linesInFile(os.Stdin, search)
 			} else {
-				err := walkDir(file, str, "")
+				err := walkDir(path, search, "")
 				if err != nil {
-					return errors.Wrap(err, "fndCmdArgWlkError:")
+					return err
 				}
 			}
 			return nil
@@ -69,20 +67,17 @@ func replaceCommand() *cli.Command {
 		Usage:   "replace str in stream",
 		Action: func(c *cli.Context) error {
 			if c.NArg() == 0 {
-				return errors.New("nArgs: no arguments for replace command")
+				return errors.New("no enough arguments for replace command")
 			}
-			file := c.Args().Get(2)
-			str := c.Args().Get(0)
-			replaceStr := c.Args().Get(1)
-			if len(file) == 0 {
-				err := replaceLinesInFile(os.Stdin, str)
-				if err != nil {
-					return errors.Wrap(err, "fndCmdArgFileError:")
-				}
+			path := c.Args().Get(2)
+			search := c.Args().Get(0)
+			replace := c.Args().Get(1)
+			if len(path) == 0 {
+				linesInFile(os.Stdin, search)
 			} else {
-				err := walkDir(file, str, replaceStr)
+				err := walkDir(path, search, replace)
 				if err != nil {
-					return errors.Wrap(err, "fndCmdArgWlkError:")
+					return err
 				}
 			}
 			return nil
@@ -93,29 +88,29 @@ func replaceCommand() *cli.Command {
 func mainAction(arg *cli.Context) error {
 	err := arg.App.Command("help").Run(arg)
 	if err != nil {
-		return errors.Wrap(err, "HlpError:")
+		return errors.Wrap(err, "Help error")
 	}
 	return nil
 }
 
-func findLines(fileName, str string, strReplace string) ([]string, error) {
-	f, err := os.Open(fileName)
+func findLines(fileName, search string, replace string) ([]string, error) {
+	file, err := os.Open(fileName)
 	if err != nil {
-		return nil, errors.Wrap(err, "FndLnsOpenError:")
+		return nil, errors.Wrapf(err, "failed to open '%s'", fileName)
 	}
 	var lines []string
-	input := bufio.NewScanner(f)
-	i := 1
+	input := bufio.NewScanner(file)
+	lineNo := 1
 	for input.Scan() {
-		s := input.Text()
-		if strings.Index(s, str) >= 0 && strReplace == "" {
-			fmt.Printf("%s:%d - %s\n", fileName, i, input.Text())
+		text := input.Text()
+		if strings.Index(text, search) >= 0 && replace == "" {
+			fmt.Printf("%s:%d - %s\n", fileName, lineNo, input.Text())
 		} else {
-			lines = append(lines, strings.Replace(s, str, strReplace, -1))
+			lines = append(lines, strings.Replace(text, search, replace, -1))
 		}
-		i++
+		lineNo++
 	}
-	f.Close()
+	defer file.Close()
 	return lines, nil
 
 }
@@ -124,54 +119,57 @@ func rewriteLines(fileName string, str []string) error {
 
 	file, err := os.Create(fileName)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "create file")
 	}
 	defer file.Close()
 
 	w := bufio.NewWriter(file)
 	for _, line := range str {
-		fmt.Fprintln(w, line)
+		_, err := fmt.Fprintln(w, line)
+		if err != nil {
+			return errors.Wrap(err, "write line")
+		}
 	}
 	return w.Flush()
 
 }
 
-func walkDir(path, str, replace string) error {
+func walkDir(path, search, replace string) error {
 
 	fi, err := os.Stat(path)
 	if err != nil {
-		return errors.Wrap(err, "wlkPathError:")
+		return errors.Wrap(err, "file info")
 	}
 	switch mode := fi.Mode(); {
 	case mode.IsDir():
 		entries, err := ioutil.ReadDir(path)
 		if err != nil {
-			return errors.Wrap(err, "wlkReadDirError:")
+			return errors.Wrap(err, "read dir")
 		}
 		for _, entry := range entries {
 			if !entry.IsDir() {
-				lines, err := findLines(path+entry.Name(), str, replace)
+				lines, err := findLines(filepath.Join(path, entry.Name()), search, replace)
 				if err != nil {
-					return errors.Wrap(err, "wlkEntriesError:")
+					return err
 				}
 				if len(lines) > 0 {
-					err = rewriteLines(path+entry.Name(), lines)
+					err = rewriteLines(filepath.Join(path, entry.Name()), lines)
 					if err != nil {
-						return errors.Wrap(err, "wlkRewriteEnriesError:")
+						return err
 					}
 				}
 
 			}
 		}
 	case mode.IsRegular():
-		lines, err := findLines(path, str, replace)
+		lines, err := findLines(path, search, replace)
 		if err != nil {
-			return errors.Wrap(err, "wlkRegularError:")
+			return err
 		}
 		if len(lines) > 0 {
 			err = rewriteLines(path, lines)
 			if err != nil {
-				return errors.Wrap(err, "wlkRegularRewriteFileError:")
+				return err
 			}
 		}
 
@@ -179,30 +177,15 @@ func walkDir(path, str, replace string) error {
 	return nil
 }
 
-func findLinesInFile(f *os.File, str string, flagReplace bool) ([]string, error) {
+func linesInFile(f *os.File, search string) error {
 	input := bufio.NewScanner(f)
-	i := 1
+	lineNo := 1
 	for input.Scan() {
-		s := input.Text()
-		if strings.Index(s, str) >= 0 {
-			fmt.Printf("%d - %s\n", i, input.Text())
+		text := input.Text()
+		if strings.Index(text, search) >= 0 {
+			fmt.Printf("%d - %s\n", lineNo, input.Text())
 		}
-		i++
-		return nil, nil
-	}
-	return nil, nil
-}
-
-func replaceLinesInFile(f *os.File, str string) error {
-	input := bufio.NewScanner(f)
-	i := 1
-	for input.Scan() {
-		s := input.Text()
-		if strings.Index(s, str) >= 0 {
-			fmt.Printf("%d - %s\n", i, input.Text())
-		}
-		i++
-		return nil
+		lineNo++
 	}
 	return nil
 }
