@@ -131,7 +131,6 @@ func rewriteLines(fileName string, str []string) error {
 		}
 	}
 	return w.Flush()
-
 }
 
 func walkDir(path, search, replace string) error {
