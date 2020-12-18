@@ -69,9 +69,12 @@ func replaceCommand() *cli.Command {
 			if c.NArg() == 0 {
 				return errors.New("no enough arguments for replace command")
 			}
-			path := c.Args().Get(2)
 			search := c.Args().Get(0)
 			replace := c.Args().Get(1)
+			if len(replace) == 0 {
+				return errors.New("no enough arguments for replace command")
+			}
+			path := c.Args().Get(2)
 			if len(path) == 0 {
 				linesInFile(os.Stdin, search)
 			} else {
@@ -137,7 +140,7 @@ func walkDir(path, search, replace string) error {
 
 	fi, err := os.Stat(path)
 	if err != nil {
-		return errors.Wrap(err, "file info")
+		return err
 	}
 	switch mode := fi.Mode(); {
 	case mode.IsDir():
