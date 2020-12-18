@@ -122,7 +122,7 @@ func rewriteLines(fileName string, str []string) error {
 
 	file, err := os.Create(fileName)
 	if err != nil {
-		return errors.Wrap(err, "create file")
+		return errors.Wrap(err, "Can't recreate file")
 	}
 	defer file.Close()
 
@@ -130,7 +130,7 @@ func rewriteLines(fileName string, str []string) error {
 	for _, line := range str {
 		_, err := fmt.Fprintln(w, line)
 		if err != nil {
-			return errors.Wrap(err, "write line")
+			return errors.Wrap(err, "can't rewrite line")
 		}
 	}
 	return w.Flush()
